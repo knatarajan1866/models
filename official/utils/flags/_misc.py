@@ -21,7 +21,6 @@ from __future__ import print_function
 from absl import flags
 
 from official.utils.flags._conventions import help_wrap
-from official.utils.flags._conventions import to_choices_str
 
 
 def define_image(data_format=True):
@@ -37,19 +36,15 @@ def define_image(data_format=True):
   key_flags = []
 
   if data_format:
-    choices = ["channels_first", "channels_last"]
-    flags.DEFINE_string(
+    flags.DEFINE_enum(
         name="data_format", short_name="df", default=None,
+        enum_values=["channels_first", "channels_last"],
         help=help_wrap(
             "A flag to override the data format used in the model. "
             "channels_first provides a performance boost on GPU but is not "
             "always compatible with CPU. If left unspecified, the data format "
             "will be chosen automatically based on whether TensorFlow was "
-            "built for CPU or GPU.\n{}".format(to_choices_str(choices))))
+            "built for CPU or GPU."))
     key_flags.append("data_format")
-
-    @flags.validator("data_format")
-    def _check_data_format(data_format):  # pylint: disable=unused-variable
-      return data_format in choices or data_format is None
 
   return key_flags

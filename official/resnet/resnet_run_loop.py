@@ -37,6 +37,9 @@ from official.utils.logs import logger
 from official.utils.misc import model_helpers
 
 
+FLAGS = flags.FLAGS
+
+
 ################################################################################
 # Functions for input processing.
 ################################################################################
@@ -347,12 +350,10 @@ def validate_batch_size_for_multi_gpu(batch_size):
     raise ValueError(err)
 
 
-def resnet_main(flags, model_function, input_function, shape=None):
+def resnet_main(model_function, input_function, shape=None):
   """Shared main loop for ResNet Models.
 
   Args:
-    flags: FLAGS object that contains the params for running. See
-      ResnetArgParser for created flags.
     model_function: the function that instantiates the Model and builds the
       ops for train/eval. This will be passed directly into the estimator.
     input_function: the function that processes the dataset and returns a
@@ -365,8 +366,8 @@ def resnet_main(flags, model_function, input_function, shape=None):
   # Using the Winograd non-fused algorithms provides a small performance boost.
   os.environ['TF_ENABLE_WINOGRAD_NONFUSED'] = '1'
 
-  if flags.multi_gpu:
-    validate_batch_size_for_multi_gpu(flags.batch_size)
+  if FLAGS.multi_gpu:
+    validate_batch_size_for_multi_gpu(FLAGS.batch_size)
 
     # There are two steps required if using multi-GPU: (1) wrap the model_fn,
     # and (2) wrap the optimizer. The first happens here, and (2) happens
@@ -380,49 +381,49 @@ def resnet_main(flags, model_function, input_function, shape=None):
   # allow_soft_placement = True, which is required for multi-GPU and not
   # harmful for other modes.
   session_config = tf.ConfigProto(
-      inter_op_parallelism_threads=flags.inter_op_parallelism_threads,
-      intra_op_parallelism_threads=flags.intra_op_parallelism_threads,
+      inter_op_parallelism_threads=FLAGS.inter_op_parallelism_threads,
+      intra_op_parallelism_threads=FLAGS.intra_op_parallelism_threads,
       allow_soft_placement=True)
 
   # Set up a RunConfig to save checkpoint and set session config.
   run_config = tf.estimator.RunConfig().replace(save_checkpoints_secs=1e9,
                                                 session_config=session_config)
   classifier = tf.estimator.Estimator(
-      model_fn=model_function, model_dir=flags.model_dir, config=run_config,
+      model_fn=model_function, model_dir=FLAGS.model_dir, config=run_config,
       params={
-          'resnet_size': flags.resnet_size,
-          'data_format': flags.data_format,
-          'batch_size': flags.batch_size,
-          'multi_gpu': flags.multi_gpu,
-          'version': flags.version,
+          'resnet_size': int(FLAGS.resnet_size),
+          'data_format': FLAGS.data_format,
+          'batch_size': FLAGS.batch_size,
+          'multi_gpu': FLAGS.multi_gpu,
+          'version': int(FLAGS.version),
           'loss_scale': flags_core.get_loss_scale(),
           'dtype': flags_core.get_tf_dtype()
       })
 
-  benchmark_logger = logger.config_benchmark_logger(flags.benchmark_log_dir)
+  benchmark_logger = logger.config_benchmark_logger(FLAGS.benchmark_log_dir)
   benchmark_logger.log_run_info('resnet')
 
   train_hooks = hooks_helper.get_train_hooks(
-      flags.hooks,
-      batch_size=flags.batch_size,
-      benchmark_log_dir=flags.benchmark_log_dir)
+      FLAGS.hooks,
+      batch_size=FLAGS.batch_size,
+      benchmark_log_dir=FLAGS.benchmark_log_dir)
 
   def input_fn_train():
-    return input_function(True, flags.data_dir, flags.batch_size,
-                          flags.epochs_between_evals,
-                          flags.num_parallel_calls, flags.multi_gpu)
+    return input_function(True, FLAGS.data_dir, FLAGS.batch_size,
+                          FLAGS.epochs_between_evals,
+                          FLAGS.num_parallel_calls, FLAGS.multi_gpu)
 
   def input_fn_eval():
-    return input_function(False, flags.data_dir, flags.batch_size,
-                          1, flags.num_parallel_calls, flags.multi_gpu)
+    return input_function(False, FLAGS.data_dir, FLAGS.batch_size,
+                          1, FLAGS.num_parallel_calls, FLAGS.multi_gpu)
 
-  total_training_cycle = flags.train_epochs // flags.epochs_between_evals
+  total_training_cycle = FLAGS.train_epochs // FLAGS.epochs_between_evals
   for cycle_index in range(total_training_cycle):
     tf.logging.info('Starting a training cycle: %d/%d',
                     cycle_index, total_training_cycle)
 
     classifier.train(input_fn=input_fn_train, hooks=train_hooks,
-                     max_steps=flags.max_train_steps)
+                     max_steps=FLAGS.max_train_steps)
 
     tf.logging.info('Starting to evaluate.')
     # flags.max_train_steps is generally associated with testing and profiling.
@@ -432,21 +433,21 @@ def resnet_main(flags, model_function, input_function, shape=None):
     # Note that eval will run for max_train_steps each loop, regardless of the
     # global_step count.
     eval_results = classifier.evaluate(input_fn=input_fn_eval,
-                                       steps=flags.max_train_steps)
+                                       steps=FLAGS.max_train_steps)
 
     benchmark_logger.log_evaluation_result(eval_results)
 
     if model_helpers.past_stop_threshold(
-        flags.stop_threshold, eval_results['accuracy']):
+        FLAGS.stop_threshold, eval_results['accuracy']):
       break
 
-  if flags.export_dir is not None:
-    warn_on_multi_gpu_export(flags.multi_gpu)
+  if FLAGS.export_dir is not None:
+    warn_on_multi_gpu_export(FLAGS.multi_gpu)
 
     # Exports a saved model for the given classifier.
     input_receiver_fn = export.build_tensor_serving_input_receiver_fn(
-        shape, batch_size=flags.batch_size)
-    classifier.export_savedmodel(flags.export_dir, input_receiver_fn)
+        shape, batch_size=FLAGS.batch_size)
+    classifier.export_savedmodel(FLAGS.export_dir, input_receiver_fn)
 
 
 def warn_on_multi_gpu_export(multi_gpu=False):
@@ -459,7 +460,6 @@ def warn_on_multi_gpu_export(multi_gpu=False):
         'try exporting the SavedModel with multi-GPU mode turned off.')
 
 
-@flags_core.call_only_once
 def define_resnet_flags(resnet_size_choices=None):
   """Add flags and validators for ResNet."""
   flags_core.define_base()
@@ -468,25 +468,17 @@ def define_resnet_flags(resnet_size_choices=None):
   flags_core.define_benchmark()
   flags.adopt_module_key_flags(flags_core)
 
-  choices = [1, 2]
-  flags.DEFINE_integer(
-      name='version', short_name='rv', default=2,
+  flags.DEFINE_enum(
+      name='version', short_name='rv', default='2', enum_values=['1', '2'],
       help=flags_core.help_wrap(
-          'Version of ResNet. (1 or 2) See README.md for details.')
-  )
-  @flags.validator('version', message='Invalid ResNet version.')
-  def _check_version(v):
-    return v in choices
+          'Version of ResNet. (1 or 2) See README.md for details.'))
 
-  rs_choice_str = ""
-  if resnet_size_choices is not None:
-    rs_choice_str = '\n' + flags_core.to_choices_str(resnet_size_choices)
 
-  flags.DEFINE_integer(
-      name='resnet_size', short_name='rs', default=50,
-      help=flags_core.help_wrap('The size of the ResNet model to use.{}'
-                                .format(rs_choice_str)))
+  choice_kwargs = dict(
+      name='resnet_size', short_name='rs', default='50',
+      help=flags_core.help_wrap('The size of the ResNet model to use.'))
 
-  @flags.validator('resnet_size', message='Invalid ResNet size.')
-  def _check_resnet_size(resnet_size):
-    return resnet_size_choices is None or resnet_size in resnet_size_choices
+  if resnet_size_choices is None:
+    flags.DEFINE_string(**choice_kwargs)
+  else:
+    flags.DEFINE_enum(enum_values=resnet_size_choices, **choice_kwargs)

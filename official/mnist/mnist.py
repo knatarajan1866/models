@@ -90,7 +90,6 @@ def create_model(data_format):
       ])
 
 
-@flags_core.call_only_once
 def define_mnist_flags():
   flags_core.define_base()
   flags_core.define_image()

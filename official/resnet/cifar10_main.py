@@ -232,7 +232,7 @@ def define_cifar_flags():
   flags.adopt_module_key_flags(resnet_run_loop)
   flags_core.set_defaults(data_dir='/tmp/cifar10_data',
                           model_dir='/tmp/cifar10_model',
-                          resnet_size=32,
+                          resnet_size='32',
                           train_epochs=250,
                           epochs_between_evals=10,
                           batch_size=128)
@@ -243,7 +243,7 @@ def main(_):
                     or input_fn)
 
   resnet_run_loop.resnet_main(
-      flags.FLAGS, cifar10_model_fn, input_function,
+      cifar10_model_fn, input_function,
       shape=[_HEIGHT, _WIDTH, _NUM_CHANNELS])
 
 

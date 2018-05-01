@@ -26,7 +26,6 @@ from absl import flags
 from official.utils.flags import core as flags_core
 
 
-@flags_core.call_only_once
 def define_flags():
   flags_core.define_example()
   flags.adopt_module_key_flags(flags_core)

@@ -56,8 +56,7 @@ def get_train_hooks(name_list, **kwargs):
 
   train_hooks = []
   for name in name_list:
-    hook_name = HOOKS_ALIAS.get(name.strip().lower(), name.strip().lower())
-    hook_name = HOOKS.get(hook_name)
+    hook_name = HOOKS.get(name.strip().lower())
     if hook_name is None:
       raise ValueError('Unrecognized training hook requested: {}'.format(name))
     else:
@@ -157,11 +156,4 @@ HOOKS = {
     'profilerhook': get_profiler_hook,
     'examplespersecondhook': get_examples_per_second_hook,
     'loggingmetrichook': get_logging_metric_hook,
-}
-
-HOOKS_ALIAS = {
-    "lth": "LoggingTensorHook",
-    "ph": "ProfilerHook",
-    "epsh": "ExamplesPerSecondHook",
-    "lmh": "LoggingMetricHook",
 }

@@ -31,8 +31,5 @@ help_wrap = functools.partial(flags.text_wrap, length=80, indent="",
                               firstline_indent="\n")
 
 
-def to_choices_str(choices):
-  return "(choices: {})".format(", ".join([str(i) for i in choices]))
-
 # Replace None with h to also allow -h
 absl_app.HelpshortFlag.SHORT_NAME = "h"

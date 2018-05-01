@@ -37,6 +37,11 @@ class BaseTest(tf.test.TestCase):
   """Tests for the Cifar10 version of Resnet.
   """
 
+  @classmethod
+  def setUpClass(cls):
+    super(BaseTest, cls).setUpClass()
+    cifar10_main.define_cifar_flags()
+
   def tearDown(self):
     super(BaseTest, self).tearDown()
     tf.gfile.DeleteRecursively(self.get_temp_dir())
@@ -171,14 +176,12 @@ class BaseTest(tf.test.TestCase):
     self._test_cifar10model_shape(version=2)
 
   def test_cifar10_end_to_end_synthetic_v1(self):
-    cifar10_main.define_cifar_flags()
     integration.run_synthetic(
         main=cifar10_main.main, tmp_root=self.get_temp_dir(),
         extra_flags=['-v', '1']
     )
 
   def test_cifar10_end_to_end_synthetic_v2(self):
-    cifar10_main.define_cifar_flags()
     integration.run_synthetic(
         main=cifar10_main.main, tmp_root=self.get_temp_dir(),
         extra_flags=['-v', '2']

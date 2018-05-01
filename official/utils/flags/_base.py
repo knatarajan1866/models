@@ -93,19 +93,16 @@ def define_base(data_dir=True, model_dir=True, train_epochs=True,
 
   if hooks:
     # Construct a pretty summary of hooks.
-    pad_len = max([len(i) for i in hooks_helper.HOOKS_ALIAS.values()]) + 6
     hook_list_str = (
-        u"\ufeff  {}Abbreviation\n".format("Hook".ljust(pad_len)) + u"\n".join([
-            u"\ufeff    {}({})".format(value.ljust(pad_len), key) for key, value
-            in hooks_helper.HOOKS_ALIAS.items()]))
-    flags.DEFINE_list(
+        u"\ufeff  Hook:\n" + u"\n".join([u"\ufeff    {}".format(key) for key
+                                         in hooks_helper.HOOKS.keys()]))
+    flags.DEFINE_spaceseplist(
         name="hooks", short_name="hk", default="LoggingTensorHook",
         help=help_wrap(
-            u"A comma separated list of (case insensitive) strings to specify "
-            u"the names of training hooks.\n{}\n\ufeff  "
-            u"Example: `--hooks ProfilerHook,ExamplesPerSecondHook`\n\ufeff  "
-            u"(or)     `-hk ph,epsh`\nSee official.utils.logs.hooks_helper for "
-            u"details.".format(hook_list_str))
+            u"A list of (case insensitive) strings to specify the names of "
+            u"training hooks.\n{}\n\ufeff  Example: `--hooks ProfilerHook "
+            u"ExamplesPerSecondHook`\n See official.utils.logs.hooks_helper "
+            u"for details.".format(hook_list_str))
     )
     key_flags.append("hooks")
 

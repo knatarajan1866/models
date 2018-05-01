@@ -24,12 +24,12 @@ from __future__ import print_function
 import functools
 import sys
 
+from absl import app as absl_app
 from absl import flags
 
 from official.utils.flags import _base
 from official.utils.flags import _benchmark
 from official.utils.flags import _conventions
-from official.utils.flags import _example
 from official.utils.flags import _misc
 from official.utils.flags import _performance
 
@@ -39,34 +39,14 @@ def set_defaults(**kwargs):
     flags.FLAGS.set_default(name=key, value=value)
 
 
-def call_only_once(f):
-  """Prevent unittests from defining flags multiple times."""
-  setattr(f, "already_called", False)
-
-  @functools.wraps(f)
-  def wrapped_fn(*args, **kwargs):
-    print(f.already_called)
-    if f.already_called:
-      return
-
-    f(*args, **kwargs)
-    setattr(f, "already_called", True)
-  return wrapped_fn
-
-
 def parse_flags(argv=None):
   """Reset flags and reparse. Currently only used in testing."""
   flags.FLAGS.unparse_flags()
-  try:
-    flags.FLAGS(sys.argv if argv is None else argv)
-  except flags.Error as error:
-    sys.stderr.write("FATAL Flags parsing error: %s\n" % error)
-    sys.stderr.write("Pass -h or --helpfull to see help on flags.\n")
-    sys.exit(1)
+  absl_app.parse_flags_with_usage(argv or sys.argv)
 
 
-def define_in_core(f):
-  """Defines a function in core.py, and registers it's key flags.
+def register_key_flags_in_core(f):
+  """Defines a function in core.py, and registers its key flags.
 
   absl uses the location of a flags.declare_key_flag() to determine the context
   in which a flag is key. By making all declares in core, this allows model
@@ -86,19 +66,17 @@ def define_in_core(f):
   return core_fn
 
 
-define_base = define_in_core(_base.define_base)
+define_base = register_key_flags_in_core(_base.define_base)
 # Remove options not relevant for Eager from define_base().
-define_base_eager = define_in_core(functools.partial(
+define_base_eager = register_key_flags_in_core(functools.partial(
     _base.define_base, epochs_between_evals=False, stop_threshold=False,
     multi_gpu=False, hooks=False))
-define_benchmark = define_in_core(_benchmark.define_benchmark)
-define_example = define_in_core(_example.define_example)
-define_image = define_in_core(_misc.define_image)
-define_performance = define_in_core(_performance.define_performance)
+define_benchmark = register_key_flags_in_core(_benchmark.define_benchmark)
+define_image = register_key_flags_in_core(_misc.define_image)
+define_performance = register_key_flags_in_core(_performance.define_performance)
 
 
 help_wrap = _conventions.help_wrap
-to_choices_str = _conventions.to_choices_str
 
 
 get_tf_dtype = _performance.get_tf_dtype

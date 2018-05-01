@@ -42,6 +42,9 @@ from official.mnist import mnist
 from official.utils.flags import core as flags_core
 
 
+FLAGS =flags.FLAGS
+
+
 def loss(logits, labels):
   return tf.reduce_mean(
       tf.nn.sparse_softmax_cross_entropy_with_logits(
@@ -103,31 +106,31 @@ def main(_):
 
   # Automatically determine device and data_format
   (device, data_format) = ('/gpu:0', 'channels_first')
-  if flags.FLAGS.no_gpu or tfe.num_gpus() <= 0:
+  if FLAGS.no_gpu or tfe.num_gpus() <= 0:
     (device, data_format) = ('/cpu:0', 'channels_last')
   # If data_format is defined in FLAGS, overwrite automatically set value.
-  if flags.FLAGS.data_format is not None:
-    data_format = flags.FLAGS.data_format
+  if FLAGS.data_format is not None:
+    data_format = FLAGS.data_format
   print('Using device %s, and data format %s.' % (device, data_format))
 
   # Load the datasets
-  train_ds = mnist_dataset.train(flags.FLAGS.data_dir).shuffle(60000).batch(
-      flags.FLAGS.batch_size)
-  test_ds = mnist_dataset.test(flags.FLAGS.data_dir).batch(
-      flags.FLAGS.batch_size)
+  train_ds = mnist_dataset.train(FLAGS.data_dir).shuffle(60000).batch(
+      FLAGS.batch_size)
+  test_ds = mnist_dataset.test(FLAGS.data_dir).batch(
+      FLAGS.batch_size)
 
   # Create the model and optimizer
   model = mnist.create_model(data_format)
-  optimizer = tf.train.MomentumOptimizer(flags.FLAGS.lr, flags.FLAGS.momentum)
+  optimizer = tf.train.MomentumOptimizer(FLAGS.lr, FLAGS.momentum)
 
   # Create file writers for writing TensorBoard summaries.
-  if flags.FLAGS.output_dir:
+  if FLAGS.output_dir:
     # Create directories to which summaries will be written
     # tensorboard --logdir=<output_dir>
     # can then be used to see the recorded summaries.
-    train_dir = os.path.join(flags.FLAGS.output_dir, 'train')
-    test_dir = os.path.join(flags.FLAGS.output_dir, 'eval')
-    tf.gfile.MakeDirs(flags.FLAGS.output_dir)
+    train_dir = os.path.join(FLAGS.output_dir, 'train')
+    test_dir = os.path.join(FLAGS.output_dir, 'eval')
+    tf.gfile.MakeDirs(FLAGS.output_dir)
   else:
     train_dir = None
     test_dir = None
@@ -137,20 +140,20 @@ def main(_):
       test_dir, flush_millis=10000, name='test')
 
   # Create and restore checkpoint (if one exists on the path)
-  checkpoint_prefix = os.path.join(flags.FLAGS.model_dir, 'ckpt')
+  checkpoint_prefix = os.path.join(FLAGS.model_dir, 'ckpt')
   step_counter = tf.train.get_or_create_global_step()
   checkpoint = tfe.Checkpoint(
       model=model, optimizer=optimizer, step_counter=step_counter)
   # Restore variables on creation if a checkpoint exists.
-  checkpoint.restore(tf.train.latest_checkpoint(flags.FLAGS.model_dir))
+  checkpoint.restore(tf.train.latest_checkpoint(FLAGS.model_dir))
 
   # Train and evaluate for a set number of epochs.
   with tf.device(device):
-    for _ in range(flags.FLAGS.train_epochs):
+    for _ in range(FLAGS.train_epochs):
       start = time.time()
       with summary_writer.as_default():
         train(model, optimizer, train_ds, step_counter,
-              flags.FLAGS.log_interval)
+              FLAGS.log_interval)
       end = time.time()
       print('\nTrain time for epoch #%d (%d total steps): %f' %
             (checkpoint.save_counter.numpy() + 1,
@@ -161,7 +164,6 @@ def main(_):
       checkpoint.save(checkpoint_prefix)
 
 
-@flags_core.call_only_once
 def define_mnist_eager_flags():
   """Defined flags and defaults for MNIST in eager mode."""
   flags_core.define_base_eager()

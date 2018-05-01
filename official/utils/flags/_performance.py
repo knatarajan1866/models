@@ -24,7 +24,6 @@ from absl import flags    # pylint: disable=g-bad-import-order
 import tensorflow as tf   # pylint: disable=g-bad-import-order
 
 from official.utils.flags._conventions import help_wrap
-from official.utils.flags._conventions import to_choices_str
 
 
 # Map string to (TensorFlow dtype, default loss scale)
@@ -103,12 +102,12 @@ def define_performance(num_parallel_calls=True, inter_op=True, intra_op=True,
         ))
 
   if dtype:
-    flags.DEFINE_string(
+    flags.DEFINE_enum(
         name="dtype", short_name="dt", default="fp32",
+        enum_values=DTYPE_MAP.keys(),
         help=help_wrap("The TensorFlow datatype used for calculations. "
                        "Variables may be cast to a higher precision on a "
-                       "case-by-case basis for numerical stability.\n{}".format(
-                           to_choices_str(DTYPE_MAP.keys()))))
+                       "case-by-case basis for numerical stability."))
 
     flags.DEFINE_integer(
         name="loss_scale", short_name="ls", default=None,
@@ -121,12 +120,6 @@ def define_performance(num_parallel_calls=True, inter_op=True, intra_op=True,
             "a loss scale, but the loss scale helps avoid some intermediate "
             "gradients from underflowing to zero. If not provided the default "
             "for fp16 is 128 and 1 for all other dtypes."))
-
-    dtype_val_msg = "Valid dtypes: {}".format(to_choices_str(DTYPE_MAP.keys()))
-    @flags.validator(flag_name="dtype", message=dtype_val_msg)
-    def _check_dtype(dtype):  # pylint: disable=unused-variable
-      if dtype in DTYPE_MAP:
-        return True
 
     loss_scale_val_msg = "loss_scale should be a positive integer."
     @flags.validator(flag_name="loss_scale", message=loss_scale_val_msg)

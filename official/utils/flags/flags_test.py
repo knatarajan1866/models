@@ -21,7 +21,6 @@ import tensorflow as tf
 from official.utils.flags import core as flags_core  # pylint: disable=g-bad-import-order
 
 
-@flags_core.call_only_once
 def define_flags():
   flags_core.define_base()
   flags_core.define_performance()
@@ -31,7 +30,9 @@ def define_flags():
 
 class BaseTester(unittest.TestCase):
 
-  def setUp(self):
+  @classmethod
+  def setUpClass(cls):
+    super(BaseTester, cls).setUpClass()
     define_flags()
 
   def test_default_setting(self):
@@ -84,13 +85,13 @@ class BaseTester(unittest.TestCase):
                                             ["fp32", tf.float32, 1]]:
       flags_core.parse_flags([__file__, "--dtype", dtype_str])
 
-      assert flags_core.get_tf_dtype() == tf_dtype
-      assert flags_core.get_loss_scale() == loss_scale
+      self.assertEqual(flags_core.get_tf_dtype(), tf_dtype)
+      self.assertEqual(flags_core.get_loss_scale(), loss_scale)
 
       flags_core.parse_flags(
           [__file__, "--dtype", dtype_str, "--loss_scale", "5"])
 
-      assert flags_core.get_loss_scale() == 5
+      self.assertEqual(flags_core.get_loss_scale(), 5)
 
     with self.assertRaises(SystemExit):
       flags_core.parse_flags([__file__, "--dtype", "int8"])

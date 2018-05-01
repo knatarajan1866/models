@@ -48,6 +48,11 @@ TEST_CSV = os.path.join(os.path.dirname(__file__), 'wide_deep_test.csv')
 class BaseTest(tf.test.TestCase):
   """Tests for Wide Deep model."""
 
+  @classmethod
+  def setUpClass(cls):
+    super(BaseTest, cls).setUpClass()
+    wide_deep.define_wide_deep_flags()
+
   def setUp(self):
     # Create temporary CSV file
     self.temp_dir = self.get_temp_dir()
@@ -117,7 +122,6 @@ class BaseTest(tf.test.TestCase):
     self.build_and_test_estimator('wide_deep')
 
   def test_end_to_end_wide(self):
-    wide_deep.define_wide_deep_flags()
     integration.run_synthetic(
         main=wide_deep.main, tmp_root=self.get_temp_dir(), extra_flags=[
             '--data_dir', self.get_temp_dir(),
@@ -126,7 +130,6 @@ class BaseTest(tf.test.TestCase):
         synth=False, max_train=None)
 
   def test_end_to_end_deep(self):
-    wide_deep.define_wide_deep_flags()
     integration.run_synthetic(
         main=wide_deep.main, tmp_root=self.get_temp_dir(), extra_flags=[
             '--data_dir', self.get_temp_dir(),
@@ -135,7 +138,6 @@ class BaseTest(tf.test.TestCase):
         synth=False, max_train=None)
 
   def test_end_to_end_wide_deep(self):
-    wide_deep.define_wide_deep_flags()
     integration.run_synthetic(
         main=wide_deep.main, tmp_root=self.get_temp_dir(), extra_flags=[
             '--data_dir', self.get_temp_dir(),
