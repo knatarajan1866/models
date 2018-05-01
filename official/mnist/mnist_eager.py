@@ -42,9 +42,6 @@ from official.mnist import mnist
 from official.utils.flags import core as flags_core
 
 
-FLAGS =flags.FLAGS
-
-
 def loss(logits, labels):
   return tf.reduce_mean(
       tf.nn.sparse_softmax_cross_entropy_with_logits(

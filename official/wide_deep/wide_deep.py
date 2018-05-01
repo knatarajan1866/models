@@ -31,9 +31,6 @@ from official.utils.logs import hooks_helper
 from official.utils.misc import model_helpers
 
 
-FLAGS = flags.FLAGS
-
-
 _CSV_COLUMNS = [
     'age', 'workclass', 'fnlwgt', 'education', 'education_num',
     'marital_status', 'occupation', 'relationship', 'race', 'gender',
@@ -226,47 +223,47 @@ def export_model(model, model_type, export_dir):
   model.export_savedmodel(export_dir, example_input_fn)
 
 
-def main(_):
+def main(flags_obj):
   # Clean up the model directory if present
-  shutil.rmtree(FLAGS.model_dir, ignore_errors=True)
-  model = build_estimator(FLAGS.model_dir, FLAGS.model_type)
+  shutil.rmtree(flags_obj.model_dir, ignore_errors=True)
+  model = build_estimator(flags_obj.model_dir, flags_obj.model_type)
 
-  train_file = os.path.join(FLAGS.data_dir, 'adult.data')
-  test_file = os.path.join(FLAGS.data_dir, 'adult.test')
+  train_file = os.path.join(flags_obj.data_dir, 'adult.data')
+  test_file = os.path.join(flags_obj.data_dir, 'adult.test')
 
   # Train and evaluate the model every `flags.epochs_between_evals` epochs.
   def train_input_fn():
     return input_fn(
-        train_file, FLAGS.epochs_between_evals, True, FLAGS.batch_size)
+        train_file, flags_obj.epochs_between_evals, True, flags_obj.batch_size)
 
   def eval_input_fn():
-    return input_fn(test_file, 1, False, FLAGS.batch_size)
+    return input_fn(test_file, 1, False, flags_obj.batch_size)
 
-  loss_prefix = LOSS_PREFIX.get(FLAGS.model_type, '')
+  loss_prefix = LOSS_PREFIX.get(flags_obj.model_type, '')
   train_hooks = hooks_helper.get_train_hooks(
-      FLAGS.hooks, batch_size=FLAGS.batch_size,
+      flags_obj.hooks, batch_size=flags_obj.batch_size,
       tensors_to_log={'average_loss': loss_prefix + 'head/truediv',
                       'loss': loss_prefix + 'head/weighted_loss/Sum'})
 
   # Train and evaluate the model every `flags.epochs_between_evals` epochs.
-  for n in range(FLAGS.train_epochs // FLAGS.epochs_between_evals):
+  for n in range(flags_obj.train_epochs // flags_obj.epochs_between_evals):
     model.train(input_fn=train_input_fn, hooks=train_hooks)
     results = model.evaluate(input_fn=eval_input_fn)
 
     # Display evaluation metrics
-    print('Results at epoch', (n + 1) * FLAGS.epochs_between_evals)
+    print('Results at epoch', (n + 1) * flags_obj.epochs_between_evals)
     print('-' * 60)
 
     for key in sorted(results):
       print('%s: %s' % (key, results[key]))
 
     if model_helpers.past_stop_threshold(
-        FLAGS.stop_threshold, results['accuracy']):
+        flags_obj.stop_threshold, results['accuracy']):
       break
 
   # Export the model
-  if FLAGS.export_dir is not None:
-    export_model(model, FLAGS.model_type, FLAGS.export_dir)
+  if flags_obj.export_dir is not None:
+    export_model(model, flags_obj.model_type, flags_obj.export_dir)
 
 
 if __name__ == '__main__':

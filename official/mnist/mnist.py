@@ -30,7 +30,6 @@ from official.utils.logs import hooks_helper
 from official.utils.misc import model_helpers
 
 
-FLAGS = flags.FLAGS
 LEARNING_RATE = 1e-4
 
 
@@ -186,11 +185,11 @@ def validate_batch_size_for_multi_gpu(batch_size):
     raise ValueError(err)
 
 
-def main(_):
+def main(flags_obj):
   model_function = model_fn
 
-  if FLAGS.multi_gpu:
-    validate_batch_size_for_multi_gpu(FLAGS.batch_size)
+  if flags_obj.multi_gpu:
+    validate_batch_size_for_multi_gpu(flags_obj.batch_size)
 
     # There are two steps required if using multi-GPU: (1) wrap the model_fn,
     # and (2) wrap the optimizer. The first happens here, and (2) happens
@@ -198,16 +197,16 @@ def main(_):
     model_function = tf.contrib.estimator.replicate_model_fn(
         model_fn, loss_reduction=tf.losses.Reduction.MEAN)
 
-  data_format = FLAGS.data_format
+  data_format = flags_obj.data_format
   if data_format is None:
     data_format = ('channels_first'
                    if tf.test.is_built_with_cuda() else 'channels_last')
   mnist_classifier = tf.estimator.Estimator(
       model_fn=model_function,
-      model_dir=FLAGS.model_dir,
+      model_dir=flags_obj.model_dir,
       params={
           'data_format': data_format,
-          'multi_gpu': FLAGS.multi_gpu
+          'multi_gpu': flags_obj.multi_gpu
       })
 
   # Set up training and evaluation input functions.
@@ -217,39 +216,39 @@ def main(_):
     # When choosing shuffle buffer sizes, larger sizes result in better
     # randomness, while smaller sizes use less memory. MNIST is a small
     # enough dataset that we can easily shuffle the full epoch.
-    ds = dataset.train(FLAGS.data_dir)
-    ds = ds.cache().shuffle(buffer_size=50000).batch(FLAGS.batch_size)
+    ds = dataset.train(flags_obj.data_dir)
+    ds = ds.cache().shuffle(buffer_size=50000).batch(flags_obj.batch_size)
 
     # Iterate through the dataset a set number (`epochs_between_evals`) of times
     # during each training session.
-    ds = ds.repeat(FLAGS.epochs_between_evals)
+    ds = ds.repeat(flags_obj.epochs_between_evals)
     return ds
 
   def eval_input_fn():
-    return dataset.test(FLAGS.data_dir).batch(
-        FLAGS.batch_size).make_one_shot_iterator().get_next()
+    return dataset.test(flags_obj.data_dir).batch(
+        flags_obj.batch_size).make_one_shot_iterator().get_next()
 
   # Set up hook that outputs training logs every 100 steps.
   train_hooks = hooks_helper.get_train_hooks(
-      FLAGS.hooks, batch_size=FLAGS.batch_size)
+      flags_obj.hooks, batch_size=flags_obj.batch_size)
 
   # Train and evaluate model.
-  for _ in range(FLAGS.train_epochs // FLAGS.epochs_between_evals):
+  for _ in range(flags_obj.train_epochs // flags_obj.epochs_between_evals):
     mnist_classifier.train(input_fn=train_input_fn, hooks=train_hooks)
     eval_results = mnist_classifier.evaluate(input_fn=eval_input_fn)
     print('\nEvaluation results:\n\t%s\n' % eval_results)
 
-    if model_helpers.past_stop_threshold(FLAGS.stop_threshold,
+    if model_helpers.past_stop_threshold(flags_obj.stop_threshold,
                                          eval_results['accuracy']):
       break
 
   # Export the model
-  if FLAGS.export_dir is not None:
+  if flags_obj.export_dir is not None:
     image = tf.placeholder(tf.float32, [None, 28, 28])
     input_fn = tf.estimator.export.build_raw_serving_input_receiver_fn({
         'image': image,
     })
-    mnist_classifier.export_savedmodel(FLAGS.export_dir, input_fn)
+    mnist_classifier.export_savedmodel(flags_obj.export_dir, input_fn)
 
 
 if __name__ == '__main__':
