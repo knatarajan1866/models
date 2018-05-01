@@ -350,10 +350,11 @@ def validate_batch_size_for_multi_gpu(batch_size):
     raise ValueError(err)
 
 
-def resnet_main(model_function, input_function, shape=None):
+def resnet_main(flags_obj, model_function, input_function, shape=None):
   """Shared main loop for ResNet Models.
 
   Args:
+    flags_obj: An object containing parsed flags.
     model_function: the function that instantiates the Model and builds the
       ops for train/eval. This will be passed directly into the estimator.
     input_function: the function that processes the dataset and returns a
@@ -366,8 +367,8 @@ def resnet_main(model_function, input_function, shape=None):
   # Using the Winograd non-fused algorithms provides a small performance boost.
   os.environ['TF_ENABLE_WINOGRAD_NONFUSED'] = '1'
 
-  if FLAGS.multi_gpu:
-    validate_batch_size_for_multi_gpu(FLAGS.batch_size)
+  if flags_obj.multi_gpu:
+    validate_batch_size_for_multi_gpu(flags_obj.batch_size)
 
     # There are two steps required if using multi-GPU: (1) wrap the model_fn,
     # and (2) wrap the optimizer. The first happens here, and (2) happens
@@ -381,49 +382,50 @@ def resnet_main(model_function, input_function, shape=None):
   # allow_soft_placement = True, which is required for multi-GPU and not
   # harmful for other modes.
   session_config = tf.ConfigProto(
-      inter_op_parallelism_threads=FLAGS.inter_op_parallelism_threads,
-      intra_op_parallelism_threads=FLAGS.intra_op_parallelism_threads,
+      inter_op_parallelism_threads=flags_obj.inter_op_parallelism_threads,
+      intra_op_parallelism_threads=flags_obj.intra_op_parallelism_threads,
       allow_soft_placement=True)
 
   # Set up a RunConfig to save checkpoint and set session config.
   run_config = tf.estimator.RunConfig().replace(save_checkpoints_secs=1e9,
                                                 session_config=session_config)
   classifier = tf.estimator.Estimator(
-      model_fn=model_function, model_dir=FLAGS.model_dir, config=run_config,
+      model_fn=model_function, model_dir=flags_obj.model_dir, config=run_config,
       params={
-          'resnet_size': int(FLAGS.resnet_size),
-          'data_format': FLAGS.data_format,
-          'batch_size': FLAGS.batch_size,
-          'multi_gpu': FLAGS.multi_gpu,
-          'version': int(FLAGS.version),
-          'loss_scale': flags_core.get_loss_scale(),
-          'dtype': flags_core.get_tf_dtype()
+          'resnet_size': int(flags_obj.resnet_size),
+          'data_format': flags_obj.data_format,
+          'batch_size': flags_obj.batch_size,
+          'multi_gpu': flags_obj.multi_gpu,
+          'version': int(flags_obj.version),
+          'loss_scale': flags_core.get_loss_scale(flags_obj),
+          'dtype': flags_core.get_tf_dtype(flags_obj)
       })
 
-  benchmark_logger = logger.config_benchmark_logger(FLAGS.benchmark_log_dir)
+  benchmark_logger = logger.config_benchmark_logger(flags_obj.benchmark_log_dir)
   benchmark_logger.log_run_info('resnet')
 
   train_hooks = hooks_helper.get_train_hooks(
-      FLAGS.hooks,
-      batch_size=FLAGS.batch_size,
-      benchmark_log_dir=FLAGS.benchmark_log_dir)
+      flags_obj.hooks,
+      batch_size=flags_obj.batch_size,
+      benchmark_log_dir=flags_obj.benchmark_log_dir)
 
   def input_fn_train():
-    return input_function(True, FLAGS.data_dir, FLAGS.batch_size,
-                          FLAGS.epochs_between_evals,
-                          FLAGS.num_parallel_calls, FLAGS.multi_gpu)
+    return input_function(True, flags_obj.data_dir, flags_obj.batch_size,
+                          flags_obj.epochs_between_evals,
+                          flags_obj.num_parallel_calls, flags_obj.multi_gpu)
 
   def input_fn_eval():
-    return input_function(False, FLAGS.data_dir, FLAGS.batch_size,
-                          1, FLAGS.num_parallel_calls, FLAGS.multi_gpu)
+    return input_function(False, flags_obj.data_dir, flags_obj.batch_size,
+                          1, flags_obj.num_parallel_calls, flags_obj.multi_gpu)
 
-  total_training_cycle = FLAGS.train_epochs // FLAGS.epochs_between_evals
+  total_training_cycle = (flags_obj.train_epochs //
+                          flags_obj.epochs_between_evals)
   for cycle_index in range(total_training_cycle):
     tf.logging.info('Starting a training cycle: %d/%d',
                     cycle_index, total_training_cycle)
 
     classifier.train(input_fn=input_fn_train, hooks=train_hooks,
-                     max_steps=FLAGS.max_train_steps)
+                     max_steps=flags_obj.max_train_steps)
 
     tf.logging.info('Starting to evaluate.')
     # flags.max_train_steps is generally associated with testing and profiling.
@@ -433,21 +435,21 @@ def resnet_main(model_function, input_function, shape=None):
     # Note that eval will run for max_train_steps each loop, regardless of the
     # global_step count.
     eval_results = classifier.evaluate(input_fn=input_fn_eval,
-                                       steps=FLAGS.max_train_steps)
+                                       steps=flags_obj.max_train_steps)
 
     benchmark_logger.log_evaluation_result(eval_results)
 
     if model_helpers.past_stop_threshold(
-        FLAGS.stop_threshold, eval_results['accuracy']):
+        flags_obj.stop_threshold, eval_results['accuracy']):
       break
 
-  if FLAGS.export_dir is not None:
-    warn_on_multi_gpu_export(FLAGS.multi_gpu)
+  if flags_obj.export_dir is not None:
+    warn_on_multi_gpu_export(flags_obj.multi_gpu)
 
     # Exports a saved model for the given classifier.
     input_receiver_fn = export.build_tensor_serving_input_receiver_fn(
-        shape, batch_size=FLAGS.batch_size)
-    classifier.export_savedmodel(FLAGS.export_dir, input_receiver_fn)
+        shape, batch_size=flags_obj.batch_size)
+    classifier.export_savedmodel(flags_obj.export_dir, input_receiver_fn)
 
 
 def warn_on_multi_gpu_export(multi_gpu=False):

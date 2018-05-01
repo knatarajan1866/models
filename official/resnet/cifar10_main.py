@@ -238,12 +238,12 @@ def define_cifar_flags():
                           batch_size=128)
 
 
-def main(_):
-  input_function = (flags.FLAGS.use_synthetic_data and get_synth_input_fn()
+def main(flags_obj):
+  input_function = (flags_obj.use_synthetic_data and get_synth_input_fn()
                     or input_fn)
 
   resnet_run_loop.resnet_main(
-      cifar10_model_fn, input_function,
+      flags_obj, cifar10_model_fn, input_function,
       shape=[_HEIGHT, _WIDTH, _NUM_CHANNELS])
 
 

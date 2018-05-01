@@ -33,14 +33,14 @@ DTYPE_MAP = {
 }
 
 
-def get_tf_dtype():
-  return DTYPE_MAP[flags.FLAGS.dtype][0]
+def get_tf_dtype(flags_obj):
+  return DTYPE_MAP[flags_obj.dtype][0]
 
 
-def get_loss_scale():
-  if flags.FLAGS.loss_scale is not None:
-    return flags.FLAGS.loss_scale
-  return DTYPE_MAP[flags.FLAGS.dtype][1]
+def get_loss_scale(flags_obj):
+  if flags_obj.loss_scale is not None:
+    return flags_obj.loss_scale
+  return DTYPE_MAP[flags_obj.dtype][1]
 
 
 def define_performance(num_parallel_calls=True, inter_op=True, intra_op=True,
