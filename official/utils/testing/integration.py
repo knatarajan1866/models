@@ -24,6 +24,8 @@ import shutil
 import sys
 import tempfile
 
+from absl import flags
+
 from official.utils.flags import core as flags_core
 
 
@@ -57,7 +59,7 @@ def run_synthetic(main, tmp_root, extra_flags=None, synth=True, max_train=1):
 
   try:
     flags_core.parse_flags(argv=args)
-    main(None)
+    main(flags.FLAGS)
   finally:
     if os.path.exists(model_dir):
       shutil.rmtree(model_dir)
