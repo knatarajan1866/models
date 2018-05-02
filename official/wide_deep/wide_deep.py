@@ -56,16 +56,10 @@ def define_wide_deep_flags():
 
   flags.adopt_module_key_flags(flags_core)
 
-  choices = ['wide', 'deep', 'wide_deep']
-  flags.DEFINE_string(
+  flags.DEFINE_enum(
       name="model_type", short_name="mt", default="wide_deep",
-      help="Select model topology.\n{}".format(
-          flags_core.to_choices_str(choices))
-  )
-
-  @flags.validator("model_type")
-  def _check_model_type(model_type):
-    return model_type in choices
+      enum_values=['wide', 'deep', 'wide_deep'],
+      help="Select model topology.")
 
   flags_core.set_defaults(data_dir='/tmp/census_data',
                           model_dir='/tmp/census_model',

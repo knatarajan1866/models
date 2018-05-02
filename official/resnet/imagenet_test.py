@@ -33,7 +33,7 @@ _LABEL_CLASSES = 1001
 class BaseTest(tf.test.TestCase):
 
   @classmethod
-  def setUpClass(cls):
+  def setUpClass(cls):  # pylint: disable=invalid-name
     super(BaseTest, cls).setUpClass()
     imagenet_main.define_imagenet_flags()
 

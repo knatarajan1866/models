@@ -38,7 +38,7 @@ class BaseTest(tf.test.TestCase):
   """
 
   @classmethod
-  def setUpClass(cls):
+  def setUpClass(cls):  # pylint: disable=invalid-name
     super(BaseTest, cls).setUpClass()
     cifar10_main.define_cifar_flags()
 

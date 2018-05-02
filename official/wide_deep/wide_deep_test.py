@@ -49,7 +49,7 @@ class BaseTest(tf.test.TestCase):
   """Tests for Wide Deep model."""
 
   @classmethod
-  def setUpClass(cls):
+  def setUpClass(cls):  # pylint: disable=invalid-name
     super(BaseTest, cls).setUpClass()
     wide_deep.define_wide_deep_flags()
 
